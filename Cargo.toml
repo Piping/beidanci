@@ -1,0 +1,45 @@
+[package]
+name = "beidanci"
+version = "0.0.1"
+edition = "2018"
+publish = false
+
+[dependencies]
+rocket = "0.4.5"
+rand = "0.7"
+lazy_static = "1.4.0"
+pulldown-cmark = { version = "0.8", default-features = false, features = ["simd"] }
+ammonia = "3"
+thiserror = "1.0"
+anyhow = "1.0"
+
+#typed html template
+[dependencies.maud]
+version = "*"
+features = ["rocket"]
+
+#staic file serving
+[dependencies.rocket_contrib]
+version = "0.4.5"
+default-features = false
+features = [
+    "serve", # static file serving
+    "diesel_postgres_pool",
+]
+
+#database related library
+[dependencies.diesel]
+version = "1.4"
+features = ["postgres", "r2d2", "chrono", "uuidv07" ]
+
+[dependencies.chrono]
+version = "0.4.10"
+features = [ "serde" ]
+
+[dependencies.uuid]
+version = "*"
+features = [ "serde", "v4" ]
+
+[dependencies.strum]
+version = "0.20"
+features = [ "derive" ]
