@@ -13,7 +13,7 @@ zoho_smtp_app_password = "demo"
 secret_key = "iVIEB5M1/yNH5meXzdM1eOF1uDY6fX/t1pda1FhllRE="
 
 [staging]
-address = "127.0.0.10"
+address = "0.0.0.0"
 port = 8000
 workers = 10
 keep_alive = 5

@@ -104,9 +104,9 @@ impl AppModel {
         let user_id = "xxx".to_string();
         let user_progress_idx = 0;
         let user_vocab_book_idx = 0;
-        let the_word = "Women".to_string();
-        let the_word_type = "名词".to_string();
-        let the_word_meaning = "女人".to_string();
+        let the_word = "herald".to_string();
+        let the_word_type = "动词".to_string();
+        let the_word_meaning = "欢呼".to_string();
 
         Ok(AppModel {
             lang,
@@ -382,6 +382,37 @@ fn main_view(model: &AppModel) -> Markup {
         input type="hidden" name="user_progress_idx" value=(model.user_progress_idx) {}
         input type="hidden" name="user_vocab_book_idx" value=(model.user_vocab_book_idx) {}
     };
+
+    let circle_icon_with_overlay_z = html! {
+        span class="icon" {
+            span class="fa-layers fa-fw" {
+              i class="fas fa-circle fa-lg has-text-info" {}
+              span class="fa-layers-text fa-inverse"
+                   style="font-weight:900"
+                   { "Z" }
+            }
+        }
+    };
+    let circle_icon_with_overlay_x = html! {
+        span class="icon" {
+            span class="fa-layers fa-fw" {
+              i class="fas fa-circle fa-lg has-text-success" {}
+              span class="fa-layers-text fa-inverse" data-fa-transform="right-1"
+                   style="font-weight:900"
+                   { "X" }
+            }
+        }
+    };
+    let circle_icon_with_overlay_c = html! {
+        span class="icon" {
+            span class="fa-layers fa-fw" {
+              i class="fas fa-circle fa-lg has-text-danger" {}
+              span class="fa-layers-text fa-inverse"
+                   style="font-weight:900"
+                   { "C" }
+            }
+        }
+    };
     html! {
         section class="hero is-primary is-fullheight " {
             div class="hero-body" {
@@ -415,28 +446,49 @@ fn main_view(model: &AppModel) -> Markup {
                             }
                             div class="level is-mobile" {
                                 div class="level-item" {
-                                    input class="button" type="submit" form="prounciation" value="发音(Z)" id="Z" {}
+                                    button class="button is-black" type="submit" form="prounciation" id="Z" {
+                                        (circle_icon_with_overlay_z)
+                                        span { "发音" }
+                                    }
                                 }
                                 @if model.user_action_type == "to_answer" {
                                         div class="level-item" {
-                                            input class="button is-info" type="submit" form="iknow" value="知道(X)"  id="X" {}
+                                            button class="button is-black" type="submit" form="iknow" id="X" {
+                                                (circle_icon_with_overlay_x)
+                                                span { "知道" }
+                                            }
                                         }
                                         div class="level-item" {
-                                            input class="button" type="submit" form="idontknow" value="不知道(C)"  id="C" {}
+                                            button class="button is-black" type="submit" form="idontknow" id="C" {
+                                                (circle_icon_with_overlay_c)
+                                                span { "不知道" }
+                                            }
                                         }
                                 } @else if model.user_action_type == "to_check" {
                                         div class="level-item" {
-                                            input class="button is-warning" type="submit" form="iamright" value="正确(X)"  id="X" {}
+                                            button class="button is-black" type="submit" form="iamright" id="X" {
+                                                (circle_icon_with_overlay_x)
+                                                span { "正确" }
+                                            }
                                         }
                                         div class="level-item" {
-                                            input class="button" type="submit" form="iamwrong" value="记错了(C)"  id="C" {}
+                                            button class="button is-black" type="submit" form="iamwrong" id="C" {
+                                                (circle_icon_with_overlay_c)
+                                                span { "记错了" }
+                                            }
                                         }
                                 } @ else {
                                         div class="level-item" {
-                                            input class="button is-warning" type="submit" form="iamright" value="跳过(X)"  id="X" {}
+                                            button class="button is-black" type="submit" form="iamright" id="X" {
+                                                (circle_icon_with_overlay_x)
+                                                span { "跳过" }
+                                            }
                                         }
                                         div class="level-item" {
-                                            input class="button" type="submit" form="iamwrong" value="下一个(C)"  id="C" {}
+                                            button class="button is-black" type="submit" form="iamwrong" id="C" {
+                                                (circle_icon_with_overlay_c)
+                                                span { "下一个" }
+                                            }
                                         }
                                 }
                             }
