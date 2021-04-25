@@ -85,6 +85,7 @@ struct AppModel {
     the_word: String,
     the_word_type: String,
     the_word_meaning: String,
+    the_word_sound: Option<String>,
     flash_msg: Option<String>,
 }
 
@@ -101,12 +102,15 @@ impl AppModel {
 
         let flash_msg = cookies.get("_flash").map(|c| c.value().to_string());
 
+        if let word_sound = cookies.get("user_vocab").map(|c| c.value().to_string()) {}
+
         let user_id = "xxx".to_string();
         let user_progress_idx = 0;
         let user_vocab_book_idx = 0;
         let the_word = "herald".to_string();
         let the_word_type = "动词".to_string();
         let the_word_meaning = "欢呼".to_string();
+        let the_word_sound = None;
 
         Ok(AppModel {
             lang,
@@ -118,6 +122,7 @@ impl AppModel {
             the_word,
             the_word_type,
             the_word_meaning,
+            the_word_sound,
         })
     }
 }
@@ -142,6 +147,12 @@ fn favicon() -> Option<Plain<File>> {
 #[get("/instantclick.min.js")]
 fn instantclick() -> Option<Plain<File>> {
     let filename = format!("static/instantclick.min.js");
+    File::open(&filename).map(|f| Plain(f)).ok()
+}
+
+#[get("/herald.mp3")]
+fn soundfile() -> Option<Plain<File>> {
+    let filename = format!("static/herald.mp3");
     File::open(&filename).map(|f| Plain(f)).ok()
 }
 
@@ -188,8 +199,9 @@ fn index(
 struct UserInput {
     user_id: String,
     user_action_type: String,
-    user_vocab_book_idx: u32,
+    user_vocab: String,
     user_progress_idx: u32,
+    user_vocab_book_idx: u32,
 }
 
 #[post("/prounciation", data = "<user>")]
@@ -202,7 +214,12 @@ fn get_prounciation(
         .path("/")
         .secure(false)
         .finish();
+    let cookie2 = Cookie::build("get_prounciation", user.user_vocab.clone())
+        .path("/")
+        .secure(false)
+        .finish();
     cookies.add(cookie);
+    cookies.add(cookie2);
     Ok(Redirect::to(format!("/")))
 }
 
@@ -379,6 +396,7 @@ fn main_view(model: &AppModel) -> Markup {
     let hidden_inputs = html! {
         input type="hidden" name="user_id" value=(model.user_id) {}
         input type="hidden" name="user_action_type" value=(model.user_action_type) {}
+        input type="hidden" name="user_vocab" value=(model.the_word) {}
         input type="hidden" name="user_progress_idx" value=(model.user_progress_idx) {}
         input type="hidden" name="user_vocab_book_idx" value=(model.user_vocab_book_idx) {}
     };
@@ -429,7 +447,7 @@ fn main_view(model: &AppModel) -> Markup {
                                     p class="subtitle is-2 has-text-black" {(model.the_word_meaning)}
                                 }
                             }
-                            form action="/prounciation" method="post" id="prounciation" {
+                            form action=(uri!(get_prounciation)) method="post" id=(uri!(get_prounciation)) onsubmit="return false;" {
                                 (hidden_inputs)
                             }
                             form action="/iknow" method="post" id="iknow" {
@@ -446,7 +464,7 @@ fn main_view(model: &AppModel) -> Markup {
                             }
                             div class="level is-mobile" {
                                 div class="level-item" {
-                                    button class="button is-black" type="submit" form="prounciation" id="Z" {
+                                    button class="button is-black" type="submit" form=(uri!(get_prounciation)) id="Z" onclick="(function(){new Audio('/herald.mp3').play();}())" {
                                         (circle_icon_with_overlay_z)
                                         span { "发音" }
                                     }
@@ -528,6 +546,7 @@ fn rocket() -> rocket::Rocket {
                 get_next_question_when_wrong,
                 check_answer_when_know,
                 check_answer_when_dontknow,
+                soundfile,
             ],
         )
         .manage(HitCount(AtomicUsize::new(0)))
