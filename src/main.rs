@@ -46,7 +46,7 @@ lazy_static! {
             [
                 ("lang-id", "zh"),
                 ("lang-name", "中文"),
-                ("site-title", "评价你的经理，加入之前确认团队氛围"),
+                ("site-title", "背单词，记概念，值得拥有"),
                 ("signup-login-button", "注册/登陆"),
             ]
             .iter()
@@ -60,7 +60,7 @@ lazy_static! {
                 ("lang-name", "English"),
                 (
                     "site-title",
-                    "Rate your managers, look for feedback before you join the team"
+                    "Memorize foreign vocab? new concept? USE the app"
                 ),
                 ("signup-login-button", "Sign Up/Login"),
             ]
@@ -150,12 +150,6 @@ fn instantclick() -> Option<Plain<File>> {
     File::open(&filename).map(|f| Plain(f)).ok()
 }
 
-#[get("/herald.mp3")]
-fn soundfile() -> Option<Plain<File>> {
-    let filename = format!("static/herald.mp3");
-    File::open(&filename).map(|f| Plain(f)).ok()
-}
-
 #[get("/robots.txt")]
 fn robots() -> &'static str {
     "
@@ -204,23 +198,13 @@ struct UserInput {
     user_vocab_book_idx: u32,
 }
 
-#[post("/prounciation", data = "<user>")]
+#[get("/prounciation?<vocab>")]
 fn get_prounciation(
     lang: ServerAcceptLangauge,
-    mut cookies: Cookies,
-    user: Form<UserInput>,
-) -> Result<Redirect> {
-    let cookie = Cookie::build("user_action_type", user.user_action_type.clone())
-        .path("/")
-        .secure(false)
-        .finish();
-    let cookie2 = Cookie::build("get_prounciation", user.user_vocab.clone())
-        .path("/")
-        .secure(false)
-        .finish();
-    cookies.add(cookie);
-    cookies.add(cookie2);
-    Ok(Redirect::to(format!("/")))
+    vocab: String,
+) -> Option<Plain<File>> {
+    let filename = format!("static/{}.mp3", vocab);
+    File::open(&filename).map(|f| Plain(f)).ok()
 }
 
 #[post("/iknow", data = "<user>")]
@@ -297,10 +281,7 @@ fn toggle_active_js(id: &str) -> String {
 }
 
 fn toggle_js(id: &str, class: &str) -> String {
-    format!(
-        "document.getElementById('{}').classList.toggle('{}');",
-        id, class
-    )
+    format!("document.getElementById('{}').classList.toggle('{}');", id, class)
 }
 
 fn keypress_js() -> Markup {
@@ -326,11 +307,50 @@ fn keypress_js() -> Markup {
     }
 }
 
+fn timeago_js() -> Markup {
+    html! {
+        (maud::PreEscaped(
+        r#"
+          <script type="text/javascript">
+            console.log('Send your Resume!');
+            // TimeAgo Configuration
+            $('time.timeago').timeago();
+          </script>
+        "#
+        ))
+    }
+}
+
+fn remember_scroll_js() -> Markup {
+    html! {
+        (maud::PreEscaped(
+        r#"
+          <script type="text/javascript">
+            console.log('Send your Resume!');
+            // Remeber Scroll Position
+            $(document).ready(function () {
+              if (localStorage.getItem('ratemymanagers.xyz-quote-scroll') != null) {
+                  $(window).scrollTop(localStorage.getItem('ratemymanagers.xyz-quote-scroll'));
+              }
+              $(window).on('scroll', function() {
+                  localStorage.setItem('ratemymanagers.xyz-quote-scroll', $(window).scrollTop());
+              });
+            });
+          </script>
+        "#
+        ))
+    }
+}
+
 fn delete_cookie_js(id: &str, path: &str) -> String {
     format!(
         "document.cookie ='{}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path={};' ;",
         id, path
     )
+}
+
+fn play_audio_without_control(url :&str) -> String {
+    format!("(function(){{new Audio('{}').play();}}())", url)
 }
 
 fn notification_view(options: &AppModel) -> Markup {
@@ -369,24 +389,8 @@ fn default_view(model: &AppModel) -> Markup {
       body {
         (main_view(model))
         (keypress_js())
-        (maud::PreEscaped(
-        r#"
-          <script type="text/javascript">
-            console.log('Send your Resume!');
-            // TimeAgo Configuration
-            $('time.timeago').timeago();
-            // Remeber Scroll Position
-            $(document).ready(function () {
-              if (localStorage.getItem('ratemymanagers.xyz-quote-scroll') != null) {
-                  $(window).scrollTop(localStorage.getItem('ratemymanagers.xyz-quote-scroll'));
-              }
-              $(window).on('scroll', function() {
-                  localStorage.setItem('ratemymanagers.xyz-quote-scroll', $(window).scrollTop());
-              });
-            });
-          </script>
-        "#
-        ))
+        (timeago_js())
+        (remember_scroll_js())
         (development_script_tag())
       }
     }
@@ -447,9 +451,6 @@ fn main_view(model: &AppModel) -> Markup {
                                     p class="subtitle is-2 has-text-black" {(model.the_word_meaning)}
                                 }
                             }
-                            form action=(uri!(get_prounciation)) method="post" id=(uri!(get_prounciation)) onsubmit="return false;" {
-                                (hidden_inputs)
-                            }
                             form action="/iknow" method="post" id="iknow" {
                                 (hidden_inputs)
                             }
@@ -464,7 +465,9 @@ fn main_view(model: &AppModel) -> Markup {
                             }
                             div class="level is-mobile" {
                                 div class="level-item" {
-                                    button class="button is-black" type="submit" form=(uri!(get_prounciation)) id="Z" onclick="(function(){new Audio('/herald.mp3').play();}())" {
+                                    button class="button is-black" type="submit" id="Z"
+                                           onclick=(play_audio_without_control(uri!(get_prounciation: &model.the_word).to_string().as_ref()))
+                                    {
                                         (circle_icon_with_overlay_z)
                                         span { "发音" }
                                     }
@@ -508,7 +511,7 @@ fn main_view(model: &AppModel) -> Markup {
                                                 span { "下一个" }
                                             }
                                         }
-                                }
+                               }
                             }
                         }
                     }
@@ -536,17 +539,16 @@ fn rocket() -> rocket::Rocket {
             "/",
             routes![
                 index,
-                setlang,
                 favicon,
-                instantclick,
                 robots,
+                setlang,
+                instantclick,
                 hitcount,
                 get_prounciation,
                 get_next_question_when_right,
                 get_next_question_when_wrong,
                 check_answer_when_know,
                 check_answer_when_dontknow,
-                soundfile,
             ],
         )
         .manage(HitCount(AtomicUsize::new(0)))
