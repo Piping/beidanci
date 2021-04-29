@@ -9,6 +9,11 @@ extern crate diesel;
 #[macro_use]
 extern crate lazy_static;
 
+mod types;
+mod db;
+#[cfg(test)]
+mod tests;
+
 use rocket::{
     fairing::AdHoc,
     get,
@@ -25,19 +30,11 @@ use std::{
 };
 
 use maud::{html, Markup};
-
-mod types;
-
-#[cfg(test)]
-mod tests;
-
 use strum::IntoEnumIterator;
-
 use types::{PanelRankType, ServerAcceptLangauge};
+use db::*;
 
 struct HitCount(AtomicUsize);
-
-struct SmtpSecret(String, String);
 
 lazy_static! {
     static ref TEXT: HashMap<ServerAcceptLangauge, HashMap<&'static str, &'static str>> = [
@@ -85,12 +82,11 @@ struct AppModel {
     the_word: String,
     the_word_type: String,
     the_word_meaning: String,
-    the_word_sound: Option<String>,
     flash_msg: Option<String>,
 }
 
 impl AppModel {
-    fn new(lang: ServerAcceptLangauge, mut cookies: Cookies) -> Result<AppModel> {
+    fn new(lang: ServerAcceptLangauge, mut cookies: Cookies, conn: &db::Connection) -> Result<AppModel> {
         let lang = cookies
             .get("state_choosen_lang")
             .map_or(lang, |c| c.value().into());
@@ -102,15 +98,17 @@ impl AppModel {
 
         let flash_msg = cookies.get("_flash").map(|c| c.value().to_string());
 
-        if let word_sound = cookies.get("user_vocab").map(|c| c.value().to_string()) {}
-
         let user_id = "xxx".to_string();
-        let user_progress_idx = 0;
+
+        let user_progress_idx = cookies.get("vocab_idx").map_or(0, |c| c.value().parse::<i64>().unwrap()) + 1;
         let user_vocab_book_idx = 0;
-        let the_word = "herald".to_string();
+
+
+        let (the_word,_) = Vocab::get_by_idx(user_progress_idx as i64, &conn).ok().unwrap();
+        let the_word = the_word.get(0).unwrap().vocab.clone();
         let the_word_type = "动词".to_string();
         let the_word_meaning = "欢呼".to_string();
-        let the_word_sound = None;
+        let user_progress_idx = user_progress_idx as u32;
 
         Ok(AppModel {
             lang,
@@ -122,7 +120,6 @@ impl AppModel {
             the_word,
             the_word_type,
             the_word_meaning,
-            the_word_sound,
         })
     }
 }
@@ -183,9 +180,10 @@ fn index(
     lang: ServerAcceptLangauge,
     cookies: Cookies,
     hit_count: State<HitCount>,
+    conn: db::Connection,
 ) -> Result<Markup> {
     hit_count.0.fetch_add(1, Ordering::Release);
-    let model = AppModel::new(lang, cookies)?;
+    let model = AppModel::new(lang, cookies, &conn)?;
     Ok(default_view(&model))
 }
 
@@ -202,9 +200,9 @@ struct UserInput {
 fn get_prounciation(
     lang: ServerAcceptLangauge,
     vocab: String,
-) -> Option<Plain<File>> {
-    let filename = format!("static/{}.mp3", vocab);
-    File::open(&filename).map(|f| Plain(f)).ok()
+    conn: db::Connection,
+) -> Option<Plain<Vec<u8>>> {
+    VocabSpeech::get_by_word(&vocab, &conn).ok().map(|f| Plain(f.mp3))
 }
 
 #[post("/iknow", data = "<user>")]
@@ -255,11 +253,18 @@ fn get_next_question_when_wrong(
     mut cookies: Cookies,
     user: Form<UserInput>,
 ) -> Result<Redirect> {
-    let cookie = Cookie::build("user_action_type", "to_answer")
+    let ck_next = Cookie::build("user_action_type", "to_answer")
         .path("/")
         .secure(false)
         .finish();
-    cookies.add(cookie);
+
+    let ck_count = cookies.get("vocab_idx").map_or(0, |c| c.value().parse::<i64>().unwrap()) + 1;
+    let ck_count = Cookie::build("vocab_idx", ck_count.to_string())
+        .path("/")
+        .secure(false)
+        .finish();
+    cookies.add(ck_next);
+    cookies.add(ck_count);
     Ok(Redirect::to(format!("/")))
 }
 
@@ -552,6 +557,7 @@ fn rocket() -> rocket::Rocket {
             ],
         )
         .manage(HitCount(AtomicUsize::new(0)))
+        .attach(db::Connection::fairing())
 }
 
 fn main() {

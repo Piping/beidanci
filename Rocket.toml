@@ -1,5 +1,5 @@
 [global.databases]
-postgres = { url = "postgres://postgres:password@localhost/postgres", pool_size = 20 }
+postgres = { url = "postgres://postgres:password@localhost/beidanci", pool_size = 20 }
 
 [development]
 address = "127.0.0.10"

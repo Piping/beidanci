@@ -54,8 +54,9 @@ run() {
 
 db() {
     # export DATABASE_URL=$(pwd)/sql.db
-    export DATABASE_URL=postgres://postgres:password@localhost/ratemymanagers
+    export DATABASE_URL=postgres://postgres:password@localhost/beidanci
     diesel setup
+    diesel migration list
     # diesel migration generate create_managers
     # diesel migration run
     # diesel migration redo
